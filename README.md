@@ -25,7 +25,11 @@ x64dbg; a tiny TypeScript server bridges it to your client over stdio. Everythin
 >
 > [Download the v2.3.0 plugins →](https://github.com/bromoket/x64dbg_mcp/releases/latest)
 
----
+## LM Studio
+
+For local models, MCP tool calling depends on the selected model and LM Studio version.
+See [docs/LM_STUDIO.md](docs/LM_STUDIO.md) for connection guidance, examples, and known
+limitations of action-based tool schemas.
 
 ## What it looks like
 
