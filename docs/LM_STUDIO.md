@@ -4,6 +4,51 @@ This project exposes x64dbg through an MCP server over standard input/output (st
 The MCP server does not connect to a model directly: LM Studio (or another MCP client)
 loads the server and forwards tool calls to it.
 
+## Recommended: use the flat LM Studio tool profile
+
+Some local models have difficulty selecting an `action` inside a nested
+`z.discriminatedUnion` schema. The server therefore provides a dedicated profile
+where common operations are separate tools with shallow parameter objects.
+
+Set this environment variable for the MCP server process:
+
+```text
+X64DBG_MCP_TOOL_PROFILE=lm-studio
+```
+
+The profile registers separate tools such as:
+
+- `x64dbg_debug_state`, `x64dbg_debug_run`, `x64dbg_debug_pause`,
+  `x64dbg_debug_step_into`, `x64dbg_debug_step_over`, `x64dbg_debug_step_out`
+- `x64dbg_registers_get_all`, `x64dbg_registers_get`, `x64dbg_registers_set`
+- `x64dbg_memory_read`, `x64dbg_memory_write`, `x64dbg_memory_page_info`,
+  `x64dbg_memory_map`, `x64dbg_memory_allocate`
+- `x64dbg_breakpoints_list`, `x64dbg_breakpoints_get`,
+  `x64dbg_breakpoint_set_software`, `x64dbg_breakpoint_set_hardware`,
+  `x64dbg_breakpoint_enable`, `x64dbg_breakpoint_disable`, `x64dbg_breakpoint_delete`
+- `x64dbg_disassemble`, `x64dbg_disassemble_function`, `x64dbg_assemble`
+- `x64dbg_command_execute`, `x64dbg_evaluate`, `x64dbg_search_pattern`
+
+This profile intentionally focuses on common debugger workflows and exposes 30
+individual tools. The original full collection remains available and is still the
+default. Set `X64DBG_MCP_TOOL_PROFILE=full` or omit the variable to use it.
+
+### Windows example
+
+When starting the server through a Windows MCP client, add the environment
+variable to that server's process environment. For example, a wrapper batch file:
+
+```bat
+@echo off
+set X64DBG_MCP_TOOL_PROFILE=lm-studio
+npx -y x64dbg-mcp-server
+```
+
+Configure the MCP client to launch that batch file, or set the variable in the
+environment from which the client is started. Restart the MCP server after
+changing the profile; the available tool list is negotiated when the MCP session
+starts.
+
 ## Basic connection
 
 Build the TypeScript server from the `server` directory:
@@ -13,44 +58,36 @@ npm install
 npm run build
 ```
 
-For an MCP client that supports launching stdio servers with `cmd`, the server entry
-can be configured as:
+For an MCP client that supports launching stdio servers with `cmd`, the server
+entry can be configured as:
 
 ```json
 {
   "mcpServers": {
     "x64dbg": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "x64dbg-mcp-server"]
+      "args": ["/c", "npx", "-y", "x64dbg-mcp-server"],
+      "env": {
+        "X64DBG_MCP_TOOL_PROFILE": "lm-studio"
+      }
     }
   }
 }
 ```
 
-If you are using a local checkout instead of the published npm package, point the
-command to Node.js and the built `server/dist/index.js` file. Use an absolute path
-when the client does not inherit the expected working directory.
+If the client does not support an `env` property, use a small wrapper batch file
+as shown above. If you are using a local checkout, point the command to Node.js
+and the built `server/dist/index.js` file.
 
-## Improving tool-call reliability
+## Tool-calling guidance
 
-- Use an instruction-tuned model that explicitly supports tool/function calling in
-  LM Studio. A model that only generates ordinary text may describe a tool call
-  without emitting a valid MCP tool invocation.
-- Enable the client's tool/MCP integration for the conversation and make sure the
-  x64dbg server is shown as connected before asking it to operate the debugger.
-- Start with one narrow request, for example: "Read all CPU registers" or
-  "Show the current debugger state". Avoid asking the model to perform a long
-  multi-step debugging task until a simple read-only tool call works.
-- When a tool requires an `action`, provide the action explicitly. For example:
-  "Use x64dbg_registers with action get_all" or
-  "Use x64dbg_breakpoints with action list".
-- Required arguments must be supplied using the exact names shown by the MCP
-  client. Addresses and byte patterns are strings; booleans and numeric limits
-  must remain their declared JSON types.
-- If the model repeatedly emits malformed arguments, try another tool-calling
-  model or a smaller, more explicit prompt. Do not weaken parameter validation
-  just to make malformed calls pass: invalid debugger arguments can modify the
-  debuggee or its memory.
+- Use an instruction-tuned model that explicitly supports tool/function calling.
+- Enable MCP tools in the conversation and confirm the x64dbg server is connected.
+- Start with a read-only request such as "Read all CPU registers".
+- Ask for one debugger operation at a time until the model reliably selects tools.
+- Use exact addresses, register names, and byte patterns where possible.
+- Treat memory writes, register changes, assembly, and breakpoint operations as
+  state-changing actions; review the arguments before allowing execution.
 
 ## Connection and timeout behavior
 
@@ -66,12 +103,9 @@ expose the debugger HTTP interface to an untrusted network. If authentication is
 enabled in the plugin settings, configure the same token as `X64DBG_MCP_TOKEN`
 for the MCP server process.
 
-## Known limitation
+## Compatibility note
 
-MCP schema support and tool-calling quality vary between LM Studio versions and
-local models. The tools in this project use an `action` discriminator with
-action-specific parameters. This is valid structured input, but some models may
-struggle with nested or union-shaped tool schemas. This documentation does not
-claim compatibility with every model. If calls still fail, capture the exact
-tool name, generated arguments, LM Studio version, and model name so the schema
-or prompt can be reviewed without guessing.
+The flat profile reduces schema complexity; it cannot guarantee tool calling for
+every model or LM Studio version. If calls still fail, record the exact tool name,
+arguments, LM Studio version, and model name. Do not remove parameter validation
+just to make malformed calls pass.
