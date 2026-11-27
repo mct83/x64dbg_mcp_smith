@@ -136,6 +136,11 @@ static void load_settings() {
     if (BridgeSettingGet(SETTINGS_SECTION, SETTINGS_KEY_TOKEN, buf)) {
         strncpy_s(g_settings.auth_token, buf, _TRUNCATE);
     }
+
+    if (BridgeSettingGet(SETTINGS_SECTION, SETTINGS_KEY_TOOL_PROFILE, buf)) {
+        if (strcmp(buf, "lm-studio") == 0) strncpy_s(g_settings.tool_profile, "lm-studio", _TRUNCATE);
+        else strncpy_s(g_settings.tool_profile, "full", _TRUNCATE);
+    }
 }
 
 static void save_settings() {
@@ -143,6 +148,7 @@ static void save_settings() {
     BridgeSettingSetUint(SETTINGS_SECTION, SETTINGS_KEY_PORT, g_settings.port);
     BridgeSettingSetUint(SETTINGS_SECTION, SETTINGS_KEY_AUTOSTART, g_settings.auto_start ? 1 : 0);
     BridgeSettingSet(SETTINGS_SECTION, SETTINGS_KEY_TOKEN, g_settings.auth_token);
+    BridgeSettingSet(SETTINGS_SECTION, SETTINGS_KEY_TOOL_PROFILE, g_settings.tool_profile);
     BridgeSettingFlush();
 }
 
@@ -151,6 +157,11 @@ static void save_settings() {
 // ============================================================================
 
 void register_all_routes(c_http_router& router) {
+    // Read-only, non-secret profile discovery endpoint for the MCP bridge.
+    router.get("/api/config/tool-profile", [](const s_http_request&) -> s_http_response {
+        return s_http_response::ok({{"tool_profile", g_settings.tool_profile}});
+    });
+
     // Health check endpoint
     router.get("/api/health", [](const s_http_request&) -> s_http_response {
         return s_http_response::ok({

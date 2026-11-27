@@ -22,9 +22,23 @@ async function main() {
     version: getVersion(),
   });
 
-  // Select a shallow, one-purpose-tool schema profile for local models.
-  // Default behavior remains the original full action-based tool collection.
-  const toolProfile = (process.env.X64DBG_MCP_TOOL_PROFILE ?? 'full').toLowerCase();
+  // Read the selected profile from the x64dbg plugin. This small discovery
+  // endpoint contains no secret and can be queried before MCP registration.
+  let discoveredProfile: string | undefined;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2_000);
+    try {
+      const response = await fetch(`http://${config.host}:${config.port}/api/config/tool-profile`, { signal: controller.signal });
+      if (response.ok) {
+        const envelope = await response.json() as { success?: boolean; data?: { tool_profile?: string } };
+        if (envelope.success && typeof envelope.data?.tool_profile === 'string') discoveredProfile = envelope.data.tool_profile;
+      }
+    } finally { clearTimeout(timeout); }
+  } catch { /* Plugin may not be running yet; use the fallback below. */ }
+
+  // x64dbg setting wins; env var remains a fallback for older/headless setups.
+  const toolProfile = (discoveredProfile ?? process.env.X64DBG_MCP_TOOL_PROFILE ?? 'full').toLowerCase();
   if (toolProfile === 'lm-studio' || toolProfile === 'flat') {
     registerLmStudioProfile(server);
     console.error('[x64dbg-mcp] Registered LM Studio profile (30 flat tools)');
@@ -32,6 +46,8 @@ async function main() {
     registerAllTools(server);
     console.error('[x64dbg-mcp] Registered full profile (23 action-based tools)');
   }
+
+  console.error(`[x64dbg-mcp] Tool profile source: ${discoveredProfile ? "x64dbg plugin settings" : "environment/default"}`);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

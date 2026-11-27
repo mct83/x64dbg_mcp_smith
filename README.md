@@ -23,10 +23,11 @@ x64dbg; a tiny TypeScript server bridges it to your client over stdio. Everythin
 
 ## LM Studio: flat tool profile
 
-For local models that struggle with nested action schemas, start the server with
-`X64DBG_MCP_TOOL_PROFILE=lm-studio`. This exposes separate tools such as
-`x64dbg_memory_read`, `x64dbg_registers_get_all`, and `x64dbg_breakpoints_list`
-instead of requiring an `action` selector. The default full profile remains unchanged.
+For local models that struggle with nested action schemas, open the x64dbg plugin's
+**Settings...** dialog and select **LM Studio** under **Tools**. The MCP bridge reads
+this setting when it starts and exposes separate tools such as `x64dbg_memory_read`,
+`x64dbg_registers_get_all`, and `x64dbg_breakpoints_list`. Restart the MCP server
+after changing the selection. The default **Full** profile remains unchanged.
 See [docs/LM_STUDIO.md](docs/LM_STUDIO.md) for setup instructions.
 
 ## Install
@@ -43,8 +44,9 @@ x64dbg/x32/plugins/x64dbg_mcp.dp32
 
 ### 2 · Server (your AI client)
 
-Configure your MCP client to launch `npx -y x64dbg-mcp-server`. For the flat LM Studio
-profile, also set `X64DBG_MCP_TOOL_PROFILE=lm-studio` in the server process environment.
+Configure your MCP client to launch `npx -y x64dbg-mcp-server`. Select the desired tool
+profile in the x64dbg plugin's Settings dialog; no wrapper script or environment variable
+is required when the plugin is running.
 
 ## Links
 

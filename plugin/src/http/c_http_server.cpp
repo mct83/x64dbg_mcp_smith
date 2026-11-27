@@ -224,7 +224,8 @@ void c_http_server::handle_connection(SOCKET client_socket) {
             auto parse_result = parse_request(raw_data);
             if (!parse_result.has_value()) {
                 response = s_http_response::bad_request(parse_result.error());
-            } else if (!is_authorized(parse_result.value())) {
+            } else if (!(parse_result->method == "GET" && parse_result->path == "/api/config/tool-profile") &&
+                         !is_authorized(parse_result.value())) {
                 response = s_http_response::unauthorized(
                     "Missing or invalid auth token (Authorization: Bearer <token>)");
             } else {

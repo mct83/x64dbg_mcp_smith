@@ -19,6 +19,7 @@ constexpr auto SETTINGS_KEY_HOST = "Host";
 constexpr auto SETTINGS_KEY_PORT = "Port";
 constexpr auto SETTINGS_KEY_AUTOSTART = "AutoStart";
 constexpr auto SETTINGS_KEY_TOKEN = "AuthToken";
+constexpr auto SETTINGS_KEY_TOOL_PROFILE = "ToolProfile";
 
 /// @brief Plugin settings persisted via BridgeSetting
 struct s_plugin_settings {
@@ -26,6 +27,7 @@ struct s_plugin_settings {
     uint16_t port = 27042;
     bool auto_start = true;
     char auth_token[128] = ""; // empty = no auth required
+    char tool_profile[16] = "full"; // "full" or "lm-studio"
 };
 
 // Menu entry IDs
