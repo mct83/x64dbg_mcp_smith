@@ -20,6 +20,7 @@ import { registerStackTools } from './stack.js';
 import { registerSymbolTools } from './symbols.js';
 import { registerThreadTools } from './threads.js';
 import { registerTracingTools } from './tracing.js';
+import { registerLmStudioTools } from './lm_studio.js';
 
 export function registerAllTools(server: McpServer) {
   registerDebugTools(server);
@@ -42,4 +43,12 @@ export function registerAllTools(server: McpServer) {
   registerHandleTools(server);
   registerControlFlowTools(server);
   registerPatchTools(server);
+}
+
+/**
+ * Register the reduced, flat-schema profile intended for local models whose
+ * tool calling is unreliable with nested action/discriminated-union schemas.
+ */
+export function registerLmStudioProfile(server: McpServer) {
+  registerLmStudioTools(server);
 }

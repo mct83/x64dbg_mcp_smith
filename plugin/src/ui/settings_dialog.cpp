@@ -13,6 +13,8 @@ static constexpr WORD IDC_AUTOSTART    = 104;
 static constexpr WORD IDC_SEPARATOR    = 105;
 static constexpr WORD IDC_TOKEN_LABEL  = 106;
 static constexpr WORD IDC_TOKEN_EDIT   = 107;
+static constexpr WORD IDC_PROFILE_LABEL = 108;
+static constexpr WORD IDC_PROFILE_COMBO = 109;
 static constexpr WORD IDC_SAVE_BTN     = IDOK;
 static constexpr WORD IDC_CANCEL_BTN   = IDCANCEL;
 
@@ -72,11 +74,11 @@ static LPDLGTEMPLATE build_settings_template() {
     dlg->style = DS_MODALFRAME | DS_CENTER | DS_SETFONT
                | WS_POPUP | WS_CAPTION | WS_SYSMENU;
     dlg->dwExtendedStyle = 0;
-    dlg->cdit = 10;  // 3 labels + 3 edits + checkbox + separator + 2 buttons
+    dlg->cdit = 12;  // profile label/combo added
     dlg->x = 0;
     dlg->y = 0;
-    dlg->cx = 160;
-    dlg->cy = 100;
+    dlg->cx = 180;
+    dlg->cy = 120;
 
     auto* ptr = reinterpret_cast<LPWORD>(dlg + 1);
 
@@ -98,7 +100,7 @@ static LPDLGTEMPLATE build_settings_template() {
         IDC_HOST_LABEL, 0x0082, "Host:");
 
     ptr = add_dialog_item(ptr,
-        ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP, 33, 7, 120, 12,
+        ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP, 33, 7, 140, 12,
         IDC_HOST_EDIT, 0x0081, "");
 
     // Row 2: Port
@@ -116,27 +118,18 @@ static LPDLGTEMPLATE build_settings_template() {
         IDC_TOKEN_LABEL, 0x0082, "Token:");
 
     ptr = add_dialog_item(ptr,
-        ES_AUTOHSCROLL | ES_PASSWORD | WS_BORDER | WS_TABSTOP, 33, 41, 120, 12,
+        ES_AUTOHSCROLL | ES_PASSWORD | WS_BORDER | WS_TABSTOP, 33, 41, 140, 12,
         IDC_TOKEN_EDIT, 0x0081, "");
 
-    // Row 4: Auto-start checkbox
-    ptr = add_dialog_item(ptr,
-        BS_AUTOCHECKBOX | WS_TABSTOP, 7, 59, 146, 10,
-        IDC_AUTOSTART, 0x0080, "Auto-start server on plugin load");
+    // Select the MCP tool profile.
+    ptr = add_dialog_item(ptr, SS_RIGHT, 7, 61, 22, 8, IDC_PROFILE_LABEL, 0x0082, "Tools:");
+    ptr = add_dialog_item(ptr, WS_TABSTOP | CBS_DROPDOWNLIST | WS_VSCROLL, 33, 58, 140, 60, IDC_PROFILE_COMBO, 0x0085, "");
 
-    // Etched separator line
-    ptr = add_dialog_item(ptr,
-        SS_ETCHEDHORZ, 7, 74, 146, 1,
-        IDC_SEPARATOR, 0x0082, "");
-
-    // Buttons row (right-aligned)
-    ptr = add_dialog_item(ptr,
-        BS_DEFPUSHBUTTON | WS_TABSTOP, 56, 81, 45, 14,
-        IDC_SAVE_BTN, 0x0080, "Save");
-
-    ptr = add_dialog_item(ptr,
-        BS_PUSHBUTTON | WS_TABSTOP, 106, 81, 45, 14,
-        IDC_CANCEL_BTN, 0x0080, "Cancel");
+    // Auto-start checkbox
+    ptr = add_dialog_item(ptr, BS_AUTOCHECKBOX | WS_TABSTOP, 7, 79, 166, 10, IDC_AUTOSTART, 0x0080, "Auto-start server on plugin load");
+    ptr = add_dialog_item(ptr, SS_ETCHEDHORZ, 7, 94, 166, 1, IDC_SEPARATOR, 0x0082, "");
+    ptr = add_dialog_item(ptr, BS_DEFPUSHBUTTON | WS_TABSTOP, 76, 101, 45, 14, IDC_SAVE_BTN, 0x0080, "Save");
+    ptr = add_dialog_item(ptr, BS_PUSHBUTTON | WS_TABSTOP, 126, 101, 45, 14, IDC_CANCEL_BTN, 0x0080, "Cancel");
 
     return dlg;
 }
@@ -158,6 +151,10 @@ static INT_PTR CALLBACK settings_dlg_proc(HWND hdlg, UINT msg, WPARAM wparam, LP
         SetDlgItemTextA(hdlg, IDC_PORT_EDIT, port_buf);
 
         SetDlgItemTextA(hdlg, IDC_TOKEN_EDIT, settings->auth_token);
+
+        SendDlgItemMessageA(hdlg, IDC_PROFILE_COMBO, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("Full"));
+        SendDlgItemMessageA(hdlg, IDC_PROFILE_COMBO, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>("LM Studio"));
+        SendDlgItemMessageA(hdlg, IDC_PROFILE_COMBO, CB_SETCURSEL, strcmp(settings->tool_profile, "lm-studio") == 0 ? 1 : 0, 0);
 
         CheckDlgButton(hdlg, IDC_AUTOSTART,
             settings->auto_start ? BST_CHECKED : BST_UNCHECKED);
@@ -187,6 +184,8 @@ static INT_PTR CALLBACK settings_dlg_proc(HWND hdlg, UINT msg, WPARAM wparam, LP
 
             settings->auto_start =
                 (IsDlgButtonChecked(hdlg, IDC_AUTOSTART) == BST_CHECKED);
+            const auto profile_index = SendDlgItemMessageA(hdlg, IDC_PROFILE_COMBO, CB_GETCURSEL, 0, 0);
+            strncpy_s(settings->tool_profile, profile_index == 1 ? "lm-studio" : "full", _TRUNCATE);
 
             EndDialog(hdlg, IDOK);
             return TRUE;
